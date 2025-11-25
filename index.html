@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>外贸业务全流程教学演示系统</title>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f0f4f8;
+        }
+
+        .step-transition {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        
+        // --- FIXED ICON COMPONENT ---
+        // Prevents "NotFoundError: Failed to execute 'removeChild'" by isolating Lucide's DOM manipulation
+        const Icon = ({ name, size = 20, className = "" }) => {
+            const containerRef = useRef(null);
+
+            useEffect(() => {
+                if (containerRef.current) {
+                    // 1. Clean container
+                    containerRef.current.innerHTML = '';
+                    
+                    // 2. Create target element for Lucide
+                    const i = document.createElement('i');
+                    i.setAttribute('data-lucide', name);
+                    
+                    // 3. Append to container
+                    containerRef.current.appendChild(i);
+
+                    // 4. Trigger Lucide replacement ONLY inside this container
+                    // passing 'attrs' to ensure size and class are applied to the generated SVG
+                    lucide.createIcons({
+                        root: containerRef.current,
+                        nameAttr: 'data-lucide',
+                        attrs: {
+                            width: size,
+                            height: size,
+                            class: className
+                        }
+                    });
+                }
+            }, [name, size, className]);
+
+            // React manages this span, Lucide manages what's inside it.
+            return <span ref={containerRef} style={{ display: 'inline-flex', verticalAlign: 'middle', lineHeight: 0 }}></span>;
+        };
+
+        // --- Data Structure Based on User's Notes ---
+        const flowData = [
+            {
+                id: 1,
+                title: "公司启动",
+                subtitle: "Company Setup",
+                icon: "building-2",
+                color: "bg-blue-600",
+                description: "外贸业务的基石，决定资金流向与退税资格。",
+                nodes: [
+                    {
+                        title: "国内公司",
+                        type: "core",
+                        details: ["核心：获得进出口权", "优势：可申请退税", "劣势：税务合规成本高"],
+                        tools: ["美金账户开设"]
+                    },
+                    {
+                        title: "香港公司",
+                        type: "alternative",
+                        details: ["优势：无外汇管制", "特点：不能退税", "适合：SOHO或初期过渡"],
+                        tools: []
+                    },
+                    {
+                        title: "资金收款渠道",
+                        type: "tool",
+                        details: ["第三方收款工具", "虚拟子账户"],
+                        tools: ["LXT", "PingPong", "连连支付", "Airwallex (空中云汇)"]
+                    }
+                ]
+            },
+            {
+                id: 2,
+                title: "流量获取",
+                subtitle: "Inquiry Generation",
+                icon: "globe",
+                color: "bg-indigo-600",
+                description: "不仅是找客户，更是让客户信任你。笔记强调独立站的重要性。",
+                nodes: [
+                    {
+                        title: "谷歌独立站 (核心推荐)",
+                        type: "star",
+                        details: ["笔记重点：建立自己的网站，更容易获得信任", "长期主义：品牌沉淀"],
+                        tools: ["Google SEO", "Google Ads"]
+                    },
+                    {
+                        title: "社交媒体",
+                        type: "core",
+                        details: ["优势：成本低，互动性强", "适合C端或轻B端"],
+                        tools: ["Facebook", "TikTok", "LinkedIn"]
+                    },
+                    {
+                        title: "B2B 平台",
+                        type: "warning",
+                        details: ["阿里、中国制造网", "警告：投入大，无经验/预算慎选", "竞争激烈"],
+                        tools: []
+                    },
+                    {
+                        title: "线下展会",
+                        type: "core",
+                        details: ["面对面建立信任", "广交会、国外展会（如迪拜）"],
+                        tools: []
+                    }
+                ]
+            },
+            {
+                id: 3,
+                title: "报价转化",
+                subtitle: "Quotation & Logic",
+                icon: "calculator",
+                color: "bg-emerald-600",
+                description: "报价不仅是给数字，而是包含了物流、术语和谈判策略的综合计算。",
+                nodes: [
+                    {
+                        title: "初步沟通",
+                        type: "core",
+                        details: ["发送产品目录/视频", "发送独立站链接", "确认客户需求细节"],
+                        tools: ["Email", "WhatsApp"]
+                    },
+                    {
+                        title: "物流询价",
+                        type: "critical",
+                        details: ["找货代核算运费", "确认：起运港(如青岛) -> 目的港", "注意：港杂费等隐形费用"],
+                        tools: []
+                    },
+                    {
+                        title: "成本核算",
+                        type: "core",
+                        details: ["货物量：小柜 vs 拼箱", "体积计算", "包含FOB/CIF不同条款费用"],
+                        tools: ["Excel报价单"]
+                    },
+                    {
+                        title: "贸易术语",
+                        type: "tool",
+                        details: ["EXW (出厂价)", "FOB (离岸价)", "CIF (到岸价 - 含保险运费)"],
+                        tools: []
+                    }
+                ]
+            },
+            {
+                id: 4,
+                title: "谈判执行",
+                subtitle: "Negotiation & PI",
+                icon: "handshake",
+                color: "bg-amber-600",
+                description: "从意向到纸面合同的落实，确认生产细节。",
+                nodes: [
+                    {
+                        title: "深入谈判",
+                        type: "core",
+                        details: ["价格博弈", "交期确认", "质量标准对齐"],
+                        tools: ["视频会议", "样品寄送"]
+                    },
+                    {
+                        title: "签订合同",
+                        type: "star",
+                        details: ["发送 PI (形式发票)", "客户回签"],
+                        tools: ["Proforma Invoice"]
+                    },
+                    {
+                        title: "安排生产",
+                        type: "core",
+                        details: ["下达生产指令", "跟进生产进度", "验货 (QC)"],
+                        tools: []
+                    }
+                ]
+            },
+            {
+                id: 5,
+                title: "收款风控",
+                subtitle: "Payment & Risk",
+                icon: "shield-alert",
+                color: "bg-rose-600",
+                description: "业务的最后闭环，也是风险最高的环节。笔记中有详细的风控逻辑。",
+                nodes: [
+                    {
+                        title: "T/T (电汇) - 推荐",
+                        type: "star",
+                        details: ["标准模式：30%定金 + 70%尾款 (发货前)", "见提单复印件付款：有风险，需谨慎", "只能给Copy件，不可寄正本"],
+                        tools: ["SWIFT"]
+                    },
+                    {
+                        title: "L/C (信用证)",
+                        type: "tool",
+                        details: ["100% L/C：风险高，尽量不做", "混合模式：20-30% T/T定金 + 余额即期信用证", "特定国家：孟加拉、巴基斯坦"],
+                        tools: []
+                    },
+                    {
+                        title: "FOB 指定货代风险",
+                        type: "warning",
+                        details: ["高危警示！", "货权在客户货代手中，容易无单放货", "对策：必须在发货前收齐尾款"],
+                        tools: []
+                    }
+                ]
+            }
+        ];
+
+        // --- Sub-Components ---
+
+        // 1. Progress Bar Component
+        const ProgressBar = ({ steps, currentStep, setStep }) => {
+            return (
+                <div className="flex justify-between items-center mb-8 px-2 relative">
+                    <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 transform -translate-y-1/2 rounded-full"></div>
+                    <div 
+                        className="absolute top-1/2 left-0 h-1 bg-blue-500 -z-10 transform -translate-y-1/2 rounded-full transition-all duration-500"
+                        style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                    ></div>
+                    
+                    {steps.map((step, index) => {
+                        const isActive = step.id === currentStep;
+                        const isCompleted = step.id < currentStep;
+                        
+                        return (
+                            <button 
+                                key={step.id}
+                                onClick={() => setStep(step.id)}
+                                className={`flex flex-col items-center group focus:outline-none`}
+                            >
+                                <div className={`
+                                    w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-300
+                                    ${isActive ? 'bg-white border-blue-600 shadow-lg scale-110' : 
+                                      isCompleted ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-400'}
+                                `}>
+                                    {isCompleted ? <Icon name="check" size={20} /> : <span className="font-bold text-sm">{step.id}</span>}
+                                </div>
+                                <span className={`
+                                    mt-2 text-xs font-medium px-2 py-1 rounded-md transition-colors
+                                    ${isActive ? 'bg-blue-100 text-blue-800' : 'text-gray-500'}
+                                `}>
+                                    {step.title}
+                                </span>
+                            </button>
+                        )
+                    })}
+                </div>
+            );
+        };
+
+        // 2. Main Stage Component (The "Board")
+        const MainStage = ({ data }) => {
+            return (
+                <div className="glass-panel rounded-2xl p-6 h-full flex flex-col animation-fade-in">
+                    <div className="flex items-center gap-3 mb-6 border-b pb-4 border-gray-100">
+                        <div className={`p-3 rounded-xl text-white shadow-lg ${data.color}`}>
+                            <Icon name={data.icon} size={28} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">{data.title}</h2>
+                            <p className="text-sm text-gray-500 font-mono tracking-wide">{data.subtitle}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+                        <div className="flex gap-2 text-blue-800 font-medium">
+                            <Icon name="info" size={18} />
+                            <span>核心逻辑：</span>
+                        </div>
+                        <p className="text-gray-700 mt-1 text-sm leading-relaxed">
+                            {data.description}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pb-4 custom-scrollbar">
+                        {data.nodes.map((node, idx) => (
+                            <div key={idx} className={`
+                                p-4 rounded-xl border-2 transition-all hover:shadow-md cursor-default
+                                ${node.type === 'star' ? 'border-amber-300 bg-amber-50' : 
+                                  node.type === 'warning' ? 'border-red-200 bg-red-50' : 
+                                  node.type === 'critical' ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-white'}
+                            `}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                        {node.type === 'star' && <Icon name="star" size={16} className="text-amber-500 fill-amber-500"/>}
+                                        {node.type === 'warning' && <Icon name="alert-triangle" size={16} className="text-red-500"/>}
+                                        {node.title}
+                                    </h3>
+                                    {node.type === 'tool' && <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-600">工具</span>}
+                                </div>
+                                
+                                <ul className="space-y-1.5 mb-3">
+                                    {node.details.map((detail, dIdx) => (
+                                        <li key={dIdx} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-gray-400 shrink-0"></span>
+                                            {detail}
+                                        </li>
+                                    ))}
+                                </ul>
+
+                                {node.tools.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-auto pt-2 border-t border-black/5">
+                                        {node.tools.map((t, tIdx) => (
+                                            <span key={tIdx} className="text-[10px] px-2 py-0.5 bg-white border border-gray-200 rounded-full text-gray-500">
+                                                {t}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // 3. Lecturer Notes (Right Panel)
+        const NotesPanel = ({ stepId }) => {
+            const notes = {
+                1: [
+                    "新手误区：不要纠结是否一定要香港公司。如果有退税需求（大部分正规贸易），国内公司是必须的。",
+                    "工具选择：PingPong、Airwallex 等第三方目前非常方便，可以开通多国本地账户，比传统银行开户门槛低。"
+                ],
+                2: [
+                    "笔记重点：作者特别强调了“慎选B2B平台”。原因在于目前阿里等平台流量贵、竞争白热化。",
+                    "趋势：建立自己的私域流量池（独立站 + 社媒）是目前B2B的主流高利润打法。",
+                    "实操：不要为了做网站而做网站，要配合SEO或Google Ads才能来流量。"
+                ],
+                3: [
+                    "报价陷阱：很多人报价只算产品成本，忘记了从工厂到港口的内陆运费、进仓费、报关费。",
+                    "术语选择：新手建议报 FOB 价，责任划分清晰。如果报 CIF，必须多预留运费涨价的空间。"
+                ],
+                4: [
+                    "PI 也是合同：PI (Proforma Invoice) 只要双方确认，就具有法律效力。",
+                    "谈判技巧：不要一次性把底牌亮出来，价格、付款方式、交期都是可以交换的筹码。"
+                ],
+                5: [
+                    "绝对红线：FOB 条款下，货代是客户找的。如果还没收到尾款就发货，货代可能会配合客户无单放货，财货两空。",
+                    "折中方案：如果客户坚持不做100%前T/T，可以尝试信保（中信保）或部分定金+即期信用证。",
+                    "特殊市场：南亚国家（孟加拉等）国家规定必须走信用证，这时要严格审核开证行的信用评级。"
+                ]
+            };
+
+            return (
+                <div className="bg-gray-900 text-gray-200 rounded-2xl p-6 h-full flex flex-col shadow-xl">
+                    <div className="flex items-center gap-2 mb-4 text-emerald-400">
+                        <Icon name="lightbulb" size={20} />
+                        <h3 className="font-bold tracking-wider text-sm uppercase">讲师·划重点</h3>
+                    </div>
+                    <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar flex-1">
+                        {notes[stepId].map((note, idx) => (
+                            <div key={idx} className="flex gap-3 text-sm leading-relaxed border-l-2 border-gray-700 pl-3 hover:border-emerald-500 transition-colors">
+                                <span className="font-bold text-emerald-500 opacity-60">0{idx + 1}</span>
+                                <p>{note}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-gray-800 text-xs text-gray-500 text-center">
+                        基于手写笔记归纳整理
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const App = () => {
+            const [currentStep, setCurrentStep] = useState(1);
+            const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+
+            const handleNext = () => {
+                if (currentStep < flowData.length) setCurrentStep(c => c + 1);
+            };
+
+            const handlePrev = () => {
+                if (currentStep > 1) setCurrentStep(c => c - 1);
+            };
+
+            // Auto-play effect
+            useEffect(() => {
+                let interval;
+                if (isAutoPlaying) {
+                    interval = setInterval(() => {
+                        setCurrentStep(prev => {
+                            if (prev >= flowData.length) {
+                                setIsAutoPlaying(false);
+                                return prev;
+                            }
+                            return prev + 1;
+                        });
+                    }, 4000); // 4 seconds per slide
+                }
+                return () => clearInterval(interval);
+            }, [isAutoPlaying]);
+
+            const currentData = flowData.find(d => d.id === currentStep);
+
+            return (
+                <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-7xl mx-auto">
+                    {/* Header */}
+                    <header className="mb-8 text-center md:text-left flex flex-col md:flex-row justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-3">
+                                <span className="bg-blue-600 text-white p-2 rounded-lg"><Icon name="container" size={24} /></span>
+                                外贸业务全流程 <span className="text-blue-600">实战教学</span>
+                            </h1>
+                            <p className="mt-2 text-gray-500 text-sm">从公司注册到安全收汇的完整作战地图</p>
+                        </div>
+                        
+                        <div className="flex gap-3 mt-4 md:mt-0">
+                             <button 
+                                onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${isAutoPlaying ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                <Icon name={isAutoPlaying ? "pause-circle" : "play-circle"} size={18} />
+                                {isAutoPlaying ? "暂停演示" : "自动演示"}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Progress Navigation */}
+                    <ProgressBar steps={flowData} currentStep={currentStep} setStep={setCurrentStep} />
+
+                    {/* Content Area */}
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[500px]">
+                        
+                        {/* Left: Main Visual Stage (2 cols wide) */}
+                        <div className="lg:col-span-2 relative">
+                            <MainStage data={currentData} />
+                            
+                            {/* Navigation Buttons floating at bottom right of main stage */}
+                            <div className="absolute bottom-6 right-6 flex gap-3">
+                                <button 
+                                    onClick={handlePrev}
+                                    disabled={currentStep === 1}
+                                    className="p-3 rounded-full bg-white shadow-lg text-gray-600 disabled:opacity-50 hover:bg-gray-50 border border-gray-100 transition-transform active:scale-95"
+                                >
+                                    <Icon name="arrow-left" size={24} />
+                                </button>
+                                <button 
+                                    onClick={handleNext}
+                                    disabled={currentStep === flowData.length}
+                                    className="px-6 py-3 rounded-full bg-blue-600 shadow-lg shadow-blue-200 text-white font-bold flex items-center gap-2 disabled:opacity-50 disabled:shadow-none hover:bg-blue-700 transition-transform active:scale-95"
+                                >
+                                    {currentStep === flowData.length ? "演示结束" : "下一步"}
+                                    <Icon name="arrow-right" size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Right: Notes Panel (1 col wide) */}
+                        <div className="lg:col-span-1 h-full">
+                            <NotesPanel stepId={currentStep} />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
